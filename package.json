@@ -4,6 +4,7 @@
   "description": "My solutions to the Advent of Code 2023 challenge",
   "main": "index.js",
   "scripts": {
+    "test-run": "ts-node test.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
