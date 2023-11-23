@@ -1,0 +1,12 @@
+# Node.js
+node_modules/
+
+# TypeScript
+*.tsbuildinfo
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
