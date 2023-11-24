@@ -1,6 +1,6 @@
-import {getSessionID} from "./sessionId";
-import * as fs from "fs";
-import path from "path";
+const fs = require("fs");
+const path = require("path");
+const getSessionID = require("./sessionId");
 
 async function getTestResult(year, day, part) {
     const filePath = constructResultPath(year, day);
@@ -19,7 +19,7 @@ async function getTestResult(year, day, part) {
         dataJSON[key] = await extractProbableTestSolution(year, day, part);
     }
     fs.writeFileSync(filePath, JSON.stringify(dataJSON))
-    return dataJSON[key];
+    return `${dataJSON[key]}`;
 }
 
 async function getInput(year, day) {
@@ -45,7 +45,7 @@ async function checkAndDownload(getFilePathFn, downloadContentFn) {
     if (!fs.existsSync(filePath)) {
         const data = await downloadContentFn();
         fs.writeFileSync(filePath, data);
-        return data;
+        return `${data}`;
     } else {
         return fs.readFileSync(filePath, 'utf-8');
     }
@@ -55,7 +55,10 @@ async function downloadTestInput(year, day) {
     const data = await loadTask(year, day);
     const pattern = /<pre><code>([\s\S]*?)<\/code><\/pre>/;
     const matches = data.match(pattern);
-    return matches[1];
+    const ret = matches[1];
+    console.log(`Test input for year ${year} day ${day}: `)
+    console.log(ret);
+    return ret;
 }
 
 async function loadTask(year, day, part) {
@@ -80,7 +83,10 @@ async function extractProbableTestSolution(year, day, part) {
         matches = pattern2.exec(rawData);
     }
 
-    return matches!== null ? matches[1] : `could not find test solution year${year} day${day} part${part}`;
+    const ret = matches!== null ? matches[1] : 'could not find solution pattern.';
+    console.log(`Test solution for year ${year} day ${day} part ${part}:`);
+    console.log(ret);
+    return ret;
 }
 
 async function downloadInput(year, day) {
@@ -121,4 +127,8 @@ async function fetchContent(url) {
     return await response.text();
 }
 
-export {getInput, getTestInput, getTestResult}
+module.exports = {
+    getInput,
+    getTestInput,
+    getTestResult
+};

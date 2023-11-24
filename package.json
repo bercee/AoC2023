@@ -2,16 +2,30 @@
   "name": "advent-of-code_2023",
   "version": "1.0.0",
   "description": "My solutions to the Advent of Code 2023 challenge",
-  "main": "index.js",
+  "main": "configUtil.ts",
   "scripts": {
-    "test-run": "ts-node test.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test_part1": "jest test/testPart1.test.ts",
+    "test_part2": "jest test/testPart2.test.ts",
+    "solve_part1": "ts-node src/scripts/solvePart1.ts",
+    "solve_part2": "ts-node src/scripts/solvePart2.ts",
+    "solve_and_submit_part1": "ts-node src/scripts/solveAndSubmitPart1.ts",
+    "solve_and_submit_part2": "ts-node src/scripts/solveAndSubmitPart2.ts"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@babel/core": "^7.23.3",
+    "@babel/preset-env": "^7.23.3",
+    "@babel/preset-typescript": "^7.23.3",
+    "@types/jest": "^29.5.10",
     "@types/node": "^20.9.4",
+    "babel-jest": "^29.7.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
     "ts-node": "^10.9.1",
     "typescript": "^5.3.2"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12"
   }
 }
