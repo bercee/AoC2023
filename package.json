@@ -4,8 +4,8 @@
   "description": "My solutions to the Advent of Code 2023 challenge",
   "main": "configUtil.ts",
   "scripts": {
-    "test_part1": "jest test/testPart1.test.ts",
-    "test_part2": "jest test/testPart2.test.ts",
+    "test_part1": "ts-node src/scripts/testPart1.ts",
+    "test_part2": "ts-node src/scripts/testPart2.ts",
     "solve_part1": "ts-node src/scripts/solvePart1.ts",
     "solve_part2": "ts-node src/scripts/solvePart2.ts",
     "solve_and_submit_part1": "ts-node src/scripts/solveAndSubmitPart1.ts",

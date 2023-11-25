@@ -1,5 +1,5 @@
 import { DAY, getSolver, YEAR } from "../../configUtil";
-import { submit } from "../util/solutionSubmitter"
+import { submit } from "../api/solutionSubmitter"
 
 run();
 async function run() {

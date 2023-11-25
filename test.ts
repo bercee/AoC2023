@@ -1,4 +1,4 @@
-import { getInput, getTestInput, getTestResult } from "./src/util/contentLoader.js";
+import { getInput, getTestInput, getTestResult } from "./src/api/contentLoader.js";
 
 console.log("helo")
 

@@ -14,7 +14,7 @@ export default class Day2 extends Solver {
         return "";
     }
 
-    part2(): number {
+    part2(): string | number {
         return "";
     }
 

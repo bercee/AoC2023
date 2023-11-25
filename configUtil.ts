@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import path from "path";
 import { Solver } from "./src/impl/solver";
-import { getTestInput, getInput } from "./src/util/contentLoader.js";
+import { getTestInput, getInput } from "./src/api/contentLoader.js";
 
 const CONFIG = "dayConfig.json";
 interface Config {
