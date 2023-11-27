@@ -1,5 +1,5 @@
 const getTestSolver = require("../../configUtil").getTestSolver;
-const getTestResult = require("./contentLoader").getTestResult;
+const getTestResult = require("../api/contentLoader").getTestResult;
 
 async function test(year, day, part) {
     console.log('---------------- TEST ----------------')

@@ -1,24 +1,23 @@
 import { Solver } from "../solver";
-import { asIntArray } from "../../util/inputParser";
+import { Parsers } from "../../util/inputParser";
 
 export default class Day1 extends Solver {
 
-    private readonly array: number[];
-
-    constructor(input: string) {
-        super(input);
-        this.array = asIntArray(input);
-    }
+    protected input: number[];
 
     part1(): string | number {
-        const f = this.array.filter((v, i) => i > 0 && v > this.array[i-1]);
+        const f = this.input.filter((v, i) => i > 0 && v > this.input[i-1]);
         return f.length;
     }
 
     part2(): number {
-        const arr2 = this.array.map((v, i) => v+this.array[i+1]+this.array[i+2]).filter(v => !isNaN(v));
+        const arr2 = this.input.map((v, i) => v+this.input[i+1]+this.input[i+2]).filter(v => !isNaN(v));
         const arr3 = arr2.filter((v, i) => i > 0 && v > arr2[i-1]);
         return arr3.length;
+    }
+
+    protected parse(input: string): number[] {
+        return Parsers.asIntArray(input);
     }
 
 }

@@ -1,7 +1,11 @@
-export function asArray(input: string): string[] {
-    return input.split("\n");
-}
 
-export function asIntArray(input: string): number[] {
-    return asArray(input).map(s => Number.parseInt(s));
+export type InputParser = (input: string) => any;
+
+export class Parsers {
+    static readonly asArray = (input: string) => input.split("\n");
+
+    static readonly asIntArray = (input: string) => input.split("\n").map(s => Number.parseInt(s));
+
+    static readonly asMatrix = (input: string) => Parsers.asArray(input).map(s => s.split(/s+/));
+
 }
