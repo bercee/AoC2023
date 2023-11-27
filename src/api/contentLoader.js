@@ -94,15 +94,15 @@ async function downloadInput(year, day) {
 }
 
 function constructResultPath(year, day) {
-    return  path.join(__dirname, `../../assets/inputs/year${year}/day${day}_results.txt`);
+    return  path.join(__dirname, `../../assets/inputs/year${year}/day${day}_test_results.txt`);
 }
 
 function constructInputFilePath(year, day) {
-    return  path.join(__dirname, `../../assets/inputs/year${year}/day${day}.txt`);
+    return  path.join(__dirname, `../../assets/inputs/year${year}/day${day}_input.txt`);
 }
 
 function constructTestInputFilePath(year, day) {
-    return  path.join(__dirname, `../../assets/inputs/year${year}/day${day}_test.txt`);
+    return  path.join(__dirname, `../../assets/inputs/year${year}/day${day}_test_input.txt`);
 }
 
 function constructInputUrl(year, day) {
