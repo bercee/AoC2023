@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const getSessionID = require("./sessionId");
+const readline = require('readline');
 
 async function getTestResult(year, day, part) {
     const filePath = constructResultPath(year, day);
@@ -83,11 +84,31 @@ async function extractProbableTestSolution(year, day, part) {
         matches = pattern2.exec(rawData);
     }
 
-    const ret = matches!== null ? matches[1] : 'could not find solution pattern.';
+    if (matches === null) {
+        console.log(`Could not find test solution for ${year} day ${day} part ${part}.`);
+        return getUserInput("Please type the correct test result manually:\n")
+    }
+
+    const ret = matches[1];
     console.log(`Test solution for year ${year} day ${day} part ${part}:`);
     console.log(ret);
     return ret;
 }
+
+function getUserInput(prompt) {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+
+    return new Promise((resolve) => {
+        rl.question(prompt, (answer) => {
+            rl.close();
+            resolve(answer);
+        });
+    });
+}
+
 
 async function downloadInput(year, day) {
     return await fetchContent(constructInputUrl(year, day));
