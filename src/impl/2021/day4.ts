@@ -6,21 +6,20 @@ import { columnOf, rowOf } from "../../util/matrixUtil";
 export default class Day4 extends Solver {
 
     input: string[];
-    origString: string;
     private numbers: number[];
     private matrixes: Matrix[];
     private hits: Matrix[];
 
 
-    protected parse(input: string): any {
-        this.origString = input;
-        this.input = Parsers.asArray(input);
+    constructor(origInput: string) {
+        super(origInput);
+        this.input = Parsers.asArray(origInput);
         this.load();
     }
 
     private load() {
         this.numbers = this.input[0].split(",").map(s => Number.parseInt(s));
-        const blocks = this.origString.split("\n\n");
+        const blocks = this.origInput.split("\n\n");
         this.matrixes = [];
         this.hits = [];
         for (let i = 1; i < blocks.length; i++) {

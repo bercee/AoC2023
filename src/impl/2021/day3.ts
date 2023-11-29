@@ -12,6 +12,8 @@ export default class Day3 extends Solver {
 
     constructor(s: string) {
         super(s);
+        const lines = Parsers.asArray(s);
+        this.input = lines.map(l => l.split('').map(c => c === '1' ? 1 : 0));
         this.m = new Matrix(this.input.length, this.input[0].length, deepCopy2DArray(this.input));
     }
 
@@ -56,11 +58,6 @@ export default class Day3 extends Solver {
         return one*two;
     }
 
-
-    protected parse(input: string) {
-        const lines = Parsers.asArray(input);
-        return lines.map(l => l.split('').map(c => c === '1' ? 1 : 0));
-    }
 }
 
 function deepCopy2DArray(originalArray: number[][]): number[][] {

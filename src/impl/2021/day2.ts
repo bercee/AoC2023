@@ -2,8 +2,6 @@ import { Solver } from "../solver";
 import { Parsers } from "../../util/inputParser";
 import { Vector } from "ts-matrix";
 
-
-
 export default class Day2 extends Solver {
 
     input: string[][];
@@ -11,7 +9,8 @@ export default class Day2 extends Solver {
     private steps: Array<Vector> = [];
 
     constructor(props: string) {
-        super(props);
+        super(props.replace(/\n$/,""));
+        this.input = Parsers.asMatrix(this.origInput);
         this.parseSteps();
     }
 
@@ -54,7 +53,4 @@ export default class Day2 extends Solver {
         })
     }
 
-    protected parse(input: string) {
-        return Parsers.asMatrix(input);
-    }
 }
