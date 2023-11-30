@@ -1,5 +1,10 @@
 import { Matrix } from "ts-matrix";
 
+/**
+ * @deprecated use `MatrixExt` instead.
+ * @param matrix
+ * @param index
+ */
 export function rowOf(matrix: Matrix, index: number) {
     if (index >= matrix.rows) {
         throw new Error("not enough rows");
@@ -11,6 +16,11 @@ export function rowOf(matrix: Matrix, index: number) {
     return ret;
 }
 
+/**
+ * @deprecated use `MatrixExt` instead.
+ * @param matrix
+ * @param index
+ */
 export function columnOf(matrix: Matrix, index: number) {
     if (index >= matrix.columns) {
         throw new Error("not enough rows");
