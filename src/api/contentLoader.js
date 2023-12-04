@@ -44,7 +44,7 @@ async function checkAndDownload(getFilePathFn, downloadContentFn) {
         fs.mkdirSync(directory, { recursive: true });
     }
     if (!fs.existsSync(filePath)) {
-        const data = await downloadContentFn();
+        const data = (await downloadContentFn()).replace(/\n+$/,"");
         fs.writeFileSync(filePath, data);
         return `${data}`;
     } else {
