@@ -1,171 +1,109 @@
 import { Solver } from "../solver";
-import { Parsers } from "../../util/inputParser";
 import _ from "lodash";
 
-interface RangeMap {
-    min: number,
-    max: number,
-    diff: number
+
+interface Range {
+    min: number;
+    max: number;
+    diff?: number;
 }
 
+interface Stage {
+    ranges: Range[];
+    globalMin: number;
+    globalMax: number;
+}
 
-interface MapSegm {
-    destStart: number;
-    sourceStart: number;
-    range: number;
-}
-class Mapper {
-    segments: MapSegm[] = [];
-    get(n: number): number {
-        const segm = this.segments.find(s => n >= s.sourceStart && n <= s.sourceStart + s.range);
-        if (segm) {
-            return n + (segm.destStart-segm.sourceStart);
-        } else {
-            return n;
-        }
-    }
-}
 
 export default class Day5 extends Solver {
 
-    input: string[]
+    seedLine: string;
+    stages: Stage[] = [];
 
-    seeds: number[];
-
-    map: Map<string, Mapper> = new Map([
-
-    ]);
-
-
-
-    ranges: RangeMap[] = [];
 
     constructor(origInput: string) {
         super(origInput);
-        this.input = Parsers.asArray(origInput);
-        this.seeds = this.input[0].split(":")[1].trim().split(/\s+/).map(s => Number.parseInt(s));
-
-        const data = this.origInput.replace(/seeds: .*\n\n/,"");
-        const parts = data.split(/\n\n/);
-        for (let part of parts) {
-            this.parse(part);
-        }
-
-        // console.log(this.map)
-    }
-
-    static rangeOf(min: number, max: number, diff: number): RangeMap {
-        return {min, max, diff}
-    }
-
-    private addRange(r: RangeMap) {
-
-        //first range
-        if (!this.ranges.length) {
-            this.ranges.push(r);
-            return;
-        }
-
-        //if no overlap
-        let first = this.ranges[0];
-        let last = _.last(this.ranges);
-        if (r.max < first.min) {
-            if (first.min - r.max > 1) {
-                this.ranges.splice(0, 0, Day5.rangeOf(r.max+1, first.min-1, 0))
+        const stages = origInput.split("\n\n");
+        this.seedLine = stages[0];
+        for (let i = 1; i < stages.length; i++) {
+            const lines = stages[i].split("\n");
+            const ranges: Range[] = [];
+            for (let j = 1; j < lines.length; j++) {
+                const data = lines[j].split(/\s+/);
+                const min = Number.parseInt(data[1]);
+                const max = min + Number.parseInt(data[2]) - 1;
+                const diff = Number.parseInt(data[0]) - min;
+                ranges.push({min, max, diff});
             }
-            this.ranges.splice(0, 0, r);
-            return;
+            const globalMin = _.min(ranges.map(r => r.min));
+            const globalMax = _.max(ranges.map(r => r.max));
+            this.stages.push({ranges, globalMax, globalMin});
         }
-        if (r.min > last.max){
-            if (r.min - last.max > 1) {
-                this.ranges.push(Day5.rangeOf(last.max + 1, r.min - 1, 0))
-            }
-            this.ranges.push(r);
-            return;
-        }
-
-        //prepare ranges
-
-        if (r.min < first.min && r.max >= first.max) {
-            this.ranges.splice(0, 0, Day5.rangeOf(r.min, first.min-1, 0));
-        }
-
-        if (r.max > last.max && r.min <= last.max) {
-            this.ranges.push(Day5.rangeOf(last.max+1, r.max, 0));
-        }
-
-        //split existing
-        let rangeOfMinIdx = this.ranges.findIndex(c => c.min <= r.min && c.max >= r.min);
-
-
-
-
-
 
     }
 
     part1(): string | number {
+        const seeds = this.seedLine.split(":")[1].split(/\s+/).map(s => Number.parseInt(s)).splice(1);
         let min = Number.MAX_SAFE_INTEGER;
-        // for (let seed of this.seeds) {
-        const start = _.min(this.seeds);
-        const end = _.max(this.seeds)*2;
-        console.log(`${start} ${end} ${end-start} ${Number.MAX_SAFE_INTEGER}`)
-        for (let seed = start; seed < end; seed++) {
-            const perc = (seed-start) / (end-start) * 100;
-            // console.log(perc);
-            let v = seed;
-            for (let mapKey of this.map.keys()) {
-                const map = this.map.get(mapKey);
-                v = map.get(v) ?? v;
-                // console.log(`    ${v}`)
-            }
-            // console.log(`seed ${seed} ==> ${v}`)
-            if (v < min) {
-                min = v;
-                console.log(min)
+        for (let s of seeds) {
+            const map = this.mapThrough(s);
+            // console.log(`${s} --> ${map} <-- ${this.mapBackward(map)}`)
+            if (map < min) {
+                min = map;
             }
         }
         return min;
     }
+
+    mapThrough(n: number): number {
+        let c = n;
+        for (let stage of this.stages) {
+            const r = this.findRangeFor(c, stage);
+            if (r) {
+                c += r.diff;
+            }
+        }
+        return c;
+    }
+
+    findRangeFor(n: number, s: Stage): Range {
+        return s.ranges.find(r => r.min <= n && r.max >= n);
+    }
+
 
     part2(): string | number {
-        let min = Number.MAX_SAFE_INTEGER;
-        for (let i = 0; i < this.seeds.length-1; i+=2) {
-            // console.log(i)
-            for (let seed = this.seeds[i]; seed < this.seeds[i]+this.seeds[i+1]; seed+=this.seeds[i+1]-1) {
-                // console.log(seed);
-                let v = seed;
-                for (let mapKey of this.map.keys()) {
-                    const map = this.map.get(mapKey);
-                    v = map.get(v) ?? v;
-                    // console.log(`    ${v}`)
-                }
-                // console.log(`seed ${seed} ==> ${v}`)
-                if (v < min) {
-                    min = v;
-                }
+        const seedsNum = this.seedLine.split(":")[1].split(/\s+/).map(s => Number.parseInt(s)).splice(1);
+        const seeds: Range[] = [];
+        for (let i = 0; i < seedsNum.length-1; i+=2) {
+            const min = seedsNum[i];
+            const max = seedsNum[i+1] + min;
+            seeds.push({min, max});
+        }
+
+        for (let i = 0; i < Number.MAX_SAFE_INTEGER; i++) {
+            const m = this.mapBackward(i);
+            if (seeds.some(r => r.min<=m && r.max>=m)) {
+                return i;
             }
         }
-
-        return min;
-
+        return undefined;
     }
 
-    private parse(part: string) {
-        const hb = part.split(":\n");
-        const title = hb[0].split(" ")[0];
-        // console.log(title);
-        // const map = new Map<number, number>();
-        const map = new Mapper();
-        // console.log(hb[1])
-        const ranges = hb[1].split("\n");
-        for (let range of ranges) {
-            const v = range.split(" ").map(s => Number.parseInt(s));
-            map.segments.push({destStart: v[0], sourceStart: v[1], range: v[2]})
-            // for (let i = 0; i < v[2]; i++) {
-            //     map.set(v[1]+i, v[0]+i);
-            // }
+
+    private mapBackward(n: number): number {
+        let c = n;
+        for (let i = this.stages.length - 1; i >= 0; i--) {
+            const stage = this.stages[i];
+            const r = this.findBackwardRange(stage, c);
+            if (r) {
+                c-=r.diff;
+            }
         }
-        this.map.set(title, map);
+        return c;
+    }
+
+
+    private findBackwardRange(stage: Stage, c: number): Range {
+        return stage.ranges.find(r => r.min + r.diff <= c && r.max + r.diff >= c);
     }
 }
