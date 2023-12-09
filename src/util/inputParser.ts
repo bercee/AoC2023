@@ -14,4 +14,8 @@ export class Parsers {
             return ss.split(regex)
         });
 
+    static readonly asIntMatrix = (input: string, regex = /\s+/, trim = true) => {
+        return Parsers.asMatrix(input, regex, trim).map(ss => ss.map(s => Number.parseInt(s)));
+    }
+
 }
