@@ -1,4 +1,5 @@
 import { Vector } from "ts-matrix";
+import { re } from "mathjs";
 
 export class Vector2D extends Vector {
 
@@ -46,6 +47,19 @@ export class Vector2D extends Vector {
     subtract(vector: Vector): Vector2D {
         return new Vector2D(super.subtract(vector).values);
     }
+
+    toString(): string {
+       return `[${this.x},${this.y}]`
+    }
+
+    static parse(str: string): Vector2D {
+        const m = str.match(/\[(.*?),(.*?)\]/);
+        if ( m.length !== 3) {
+            return undefined;
+        } else {
+            return Vector2D.of(Number.parseInt(m[1]), Number.parseInt(m[2]));
+        }
+    }
 }
 
 export namespace Direction {
@@ -59,6 +73,10 @@ export namespace Direction {
     export const DOWN_LEFT = new Vector2D([-1, 1]);
 
     export const ZERO = new Vector2D([0, 0]);
+
+    export function toMatrixV(v: Vector2D): Vector2D {
+        return Vector2D.of(v.y, v.x);
+    }
 
     export const ALL = [UP, DOWN, LEFT, RIGHT, UP_RIGHT, UP_LEFT, DOWN_RIGHT, DOWN_LEFT, ZERO];
 

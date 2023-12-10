@@ -11,7 +11,7 @@ export class Parsers {
         (input: string, regex = /\s+/, trim = true) =>
         Parsers.asArray(input).map(s => {
             const ss = trim ? s.trim() : s;
-            return ss.split(regex)
+            return ss.split(regex ?? "");
         });
 
     static readonly asIntMatrix = (input: string, regex = /\s+/, trim = true) => {
