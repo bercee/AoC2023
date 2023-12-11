@@ -8,14 +8,17 @@ export class Parsers {
     static readonly asIntArray = (input: string) => Parsers.asArray(input).map(s => Number.parseInt(s));
 
     static readonly asMatrix =
-        (input: string, regex = /\s+/, trim = true) =>
+        (input: string, regex = "\\s+", trim = true) =>
         Parsers.asArray(input).map(s => {
             const ss = trim ? s.trim() : s;
-            return ss.split(regex ?? "");
+            return ss.split(createRegexp(regex));
         });
 
-    static readonly asIntMatrix = (input: string, regex = /\s+/, trim = true) => {
+    static readonly asIntMatrix = (input: string, regex = "\\s+", trim = true) => {
         return Parsers.asMatrix(input, regex, trim).map(ss => ss.map(s => Number.parseInt(s)));
     }
+}
 
+function createRegexp(s: string) {
+    return new RegExp(s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 }
