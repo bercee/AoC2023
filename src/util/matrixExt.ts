@@ -1,6 +1,11 @@
 import { Matrix } from "ts-matrix";
 
 export default class MatrixExt extends Matrix {
+
+    static of(values: number[][]): MatrixExt {
+        return new MatrixExt(values.length, values[0].length, values);
+    }
+
     row(index: number): number[] {
         if (index >= this.rows) {
             throw new Error("Row index cannot be larger or equal than the number of rows.");
