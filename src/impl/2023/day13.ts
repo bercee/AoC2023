@@ -24,17 +24,17 @@ export default class Day13 extends Solver {
         return _.isEqual(subm1, subm2);
     }
 
-    private findHorizAxis(m: string[][]): number {
+    private findHorizAxis(m: string[][], ignore?: number): number {
         for (let i = 1; i < m.length; i++) {
-            if (this.hasMirrorAt(m, i)) {
+            if (this.hasMirrorAt(m, i) && (ignore === undefined || i !== ignore)) {
                 return i;
             }
         }
         return 0;
     }
 
-    private findVertAxis(m: string[][]): number {
-        return this.findHorizAxis(transpose(m));
+    private findVertAxis(m: string[][], ignore?: number): number {
+        return this.findHorizAxis(transpose(m), ignore);
     }
 
     part1(): string | number {
@@ -54,29 +54,24 @@ export default class Day13 extends Solver {
 
     part2(): string | number {
         let ret = 0;
-        for (let m of this.input) {
+        for (const element of this.input) {
+            let m = element;
             const vertOrig = this.findVertAxis(m);
             const horizOrig = this.findHorizAxis(m);
             let found = false;
             for (let i = 0; i < m.length; i++) {
                 for (let j = 0; j < m[0].length; j++) {
                     const changed = this.changeAt(m, i, j);
-                    const vert = this.findVertAxis(changed);
-                    const horiz = this.findHorizAxis(changed);
-                    if (vert !== 0 && vert !== vertOrig) {
+                    const vert = this.findVertAxis(changed, vertOrig);
+                    const horiz = this.findHorizAxis(changed, horizOrig);
+                    if (vert !== 0) {
                         ret += vert;
                         found = true;
-                    } else if (horiz !== 0 && horiz !== horizOrig) {
+                    } else if (horiz !== 0) {
                         ret += horiz*100;
                         found = true;
                     }
                     if (found) {
-                        if ((vert === 0 && horiz === 0) || (vert === vertOrig && horiz === horizOrig)
-                            || (vert === 0 && horiz === horizOrig)
-                            || (horiz === 0 && vert === vertOrig)) {
-                            console.log("baj van")
-                        }
-                        // console.log(`${i} ${j} ${vert}/${vertOrig} ${horiz}/${horizOrig}`)
                         break;
                     }
                 }
