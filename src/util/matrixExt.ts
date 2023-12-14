@@ -1,4 +1,5 @@
 import { Matrix } from "ts-matrix";
+import _ from "lodash";
 
 export default class MatrixExt extends Matrix {
 
@@ -30,6 +31,53 @@ export default class MatrixExt extends Matrix {
 
     allColumns(): number[][] {
         return this.transpose().values;
+    }
+
+    transpose(): MatrixExt {
+        return MatrixExt.of(super.transpose().values);
+    }
+
+    flipVertical(): MatrixExt {
+        return MatrixExt.of(this.values.map(l => l.reverse()));
+    }
+
+    rotateLeft(): MatrixExt {
+        const matrix = this.values;
+        const numRows = matrix.length;
+        const numCols = matrix[0].length;
+
+        const rotatedMatrix: number[][] = [];
+
+        for (let col = numCols - 1; col >= 0; col--) {
+            const newRow: number[] = [];
+            for (let row = 0; row < numRows; row++) {
+                newRow.push(matrix[row][col]);
+            }
+            rotatedMatrix.push(newRow);
+        }
+
+        return MatrixExt.of(rotatedMatrix);
+    }
+
+    rotateRight(): MatrixExt {
+        const matrix = this.values;
+        const numRows = matrix.length;
+        const numCols = matrix[0].length;
+
+        const rotatedMatrix: number[][] = [];
+
+        for (let col = 0; col < numCols; col++) {
+            const newRow: number[] = [];
+            for (let row = numRows - 1; row >= 0; row--) {
+                newRow.push(matrix[row][col]);
+            }
+            rotatedMatrix.push(newRow);
+        }
+        return MatrixExt.of(rotatedMatrix);
+    }
+
+    clone(): MatrixExt {
+        return MatrixExt.of(_.cloneDeep(this.values));
     }
 
 }
