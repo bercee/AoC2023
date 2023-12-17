@@ -1,5 +1,6 @@
 import { Vector } from "ts-matrix";
 import { re } from "mathjs";
+import retryTimes = jest.retryTimes;
 
 export class Vector2D extends Vector {
 
@@ -52,6 +53,11 @@ export class Vector2D extends Vector {
        return `[${this.x},${this.y}]`
     }
 
+    equals(vec: Vector2D): boolean {
+        return super.equals(vec);
+    }
+
+
     static parse(str: string): Vector2D {
         const m = str.match(/\[(.*?),(.*?)\]/);
         if ( m.length !== 3) {
@@ -59,6 +65,18 @@ export class Vector2D extends Vector {
         } else {
             return Vector2D.of(Number.parseInt(m[1]), Number.parseInt(m[2]));
         }
+    }
+
+    flip(): Vector2D {
+        return Vector2D.of(-this.x, -this.y);
+    }
+
+    rotateClock(): Vector2D {
+        return Vector2D.of(this.y, -this.x);
+    }
+
+    rotateCounterClock(): Vector2D {
+        return Vector2D.of(-this.y, this.x);
     }
 }
 
