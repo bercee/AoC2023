@@ -76,16 +76,7 @@ export default class Day18 extends Solver {
     }
 
     private perimeter(poly: Polygon): number {
-        let perimiter = 0;
-        let face;
-        for (let face1 of poly.faces) {
-            face = face1;
-        }
-        for (let edge of face.edges) {
-            perimiter += edge.shape.length;
-        }
-
-        return perimiter
+        return [...poly.faces][0].perimeter;
     }
 
     private solveFor(steps: Step[]): number {
