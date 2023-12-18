@@ -49,6 +49,10 @@ export class Vector2D extends Vector {
         return new Vector2D(super.subtract(vector).values);
     }
 
+    mul(n: number): Vector2D {
+        return Vector2D.of(this.x * n, this.y * n);
+    }
+
     toString(): string {
        return `[${this.x},${this.y}]`
     }
@@ -97,6 +101,7 @@ export namespace Direction {
     }
 
     export const ALL = [UP, DOWN, LEFT, RIGHT, UP_RIGHT, UP_LEFT, DOWN_RIGHT, DOWN_LEFT, ZERO];
+    export const MAIN = [UP, DOWN, LEFT, RIGHT];
 
     export function findDirection(from: Vector2D, to: Vector2D): Vector2D | undefined {
         return findPerfectDir(from, to, 45);
