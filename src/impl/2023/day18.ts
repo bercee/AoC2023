@@ -29,14 +29,6 @@ const DIRECTIONS2 = new Map([
     ["2", LEFT],
     ["3", UP],
 ])
-new Vector(0, 0.5);
-new Vector(0, -0.5);
-new Vector(0.5, 0);
-new Vector(-0.5, 0);
-new Vector(0.5, 0.5);
-new Vector(-0.5, 0.5);
-new Vector(0.5, -0.5);
-new Vector(-0.5, -0.5);
 
 export default class Day18 extends Solver {
 
