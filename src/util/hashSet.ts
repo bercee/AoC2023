@@ -8,6 +8,12 @@ export class HashSet<T> {
         this.set[hash] = item;
     }
 
+    addAll(...items: T[]): void {
+        for (let item of items) {
+            this.add(item);
+        }
+    }
+
     has(item: T): boolean {
         const hash = this.hashFunction(item);
         return this.set.hasOwnProperty(hash);
@@ -20,5 +26,9 @@ export class HashSet<T> {
 
     toArray(): T[] {
         return Object.values(this.set);
+    }
+
+    size(): number {
+        return this.toArray().length;
     }
 }
