@@ -72,13 +72,12 @@ export default class Day12 extends Solver {
         return 0;
     }
 
-    part1(): string | number {
-        let c = 0;
-        for (let i of this.input) {
-            c += this.recursion(i.str, i.segments);
-        }
+    private solve(inputs: Input[]) {
+        return _.sum(inputs.map(i => this.recursion(i.str, i.segments)));
+    }
 
-        return c;
+    part1(): string | number {
+        return this.solve(this.input);
     }
 
     part2(): string | number {
@@ -87,10 +86,6 @@ export default class Day12 extends Solver {
             segments: [...i.segments, ...i.segments, ...i.segments, ...i.segments, ...i.segments]
         }})
 
-        let c = 0;
-        for (let i of unfolded) {
-            c += this.recursion(i.str, i.segments);
-        }
-        return c;
+        return this.solve(unfolded);
     }
 }
