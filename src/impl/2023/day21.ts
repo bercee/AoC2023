@@ -105,6 +105,29 @@ export default class Day21 extends Solver {
 
         return retM;
     }
+
+    private fillAMatrix(origM: number[][], start: Point): number[][] {
+        const retM = _.cloneDeep(origM);
+        let nexts = [start];
+        let step = retM[start.x][start.y];
+
+
+        while (nexts.length > 0) {
+            step++;
+            const nextSet = new HashSet<Flatten.Point>();
+            for (let next of nexts) {
+                const nextNexts = this.nextSteps(next).filter(p => retM[p.x][p.y] === undefined);
+                nextNexts.forEach(p => {
+                    nextSet.add(p);
+                    retM[p.x][p.y] = step;
+                });
+            }
+            nexts = nextSet.toArray();
+        }
+
+        return retM;
+    }
+
     private fillMatrixFromExisting(origM: number[][]): number[][] {
         const startPoints = this.findDefinedPoints(origM);
         return this.fillAMatrix2(origM, startPoints);
