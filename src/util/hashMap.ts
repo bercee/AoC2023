@@ -1,7 +1,8 @@
 export class HashMap<K, V> {
     private map: { [hashedKey: string]: { key: K; value: V } } = {};
 
-    constructor(private hashFunction: (key: K) => string = JSON.stringify) {}
+    constructor(private hashFunction: (key: K) => string = JSON.stringify) {
+    }
 
     set(key: K, value: V): void {
         const hash = this.hashFunction(key);
@@ -25,5 +26,9 @@ export class HashMap<K, V> {
 
     getKeys(): K[] {
         return Object.values(this.map).map(entry => entry.key);
+    }
+
+    clear() {
+        this.map = {};
     }
 }

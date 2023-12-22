@@ -80,4 +80,16 @@ export default class MatrixExt extends Matrix {
         return MatrixExt.of(_.cloneDeep(this.values));
     }
 
+    setColumn(colIdx:number, v: number[]) {
+        if (colIdx < 0 || colIdx >= this.rows) {
+            throw new Error("col idx is not OK")
+        }
+        if (v.length !== this.rows) {
+            throw new Error("length of v is not OK")
+        }
+
+        for (let i = 0; i < this.rows; i++) {
+            this.values[i][colIdx] = v[i];
+        }
+    }
 }

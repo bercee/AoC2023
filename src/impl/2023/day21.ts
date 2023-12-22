@@ -3,7 +3,6 @@ import { Parsers } from "../../util/inputParser";
 import { Point, Vector } from "@flatten-js/core";
 import { HashSet } from "../../util/hashSet";
 import _ from "lodash";
-import { re } from "mathjs";
 
 const UP = new Vector(-1, 0);
 const DOWN = new Vector(1, 0);
@@ -15,12 +14,9 @@ const DIRECTIONS = [UP, DOWN, LEFT, RIGHT];
 export default class Day21 extends Solver {
 
     map: number[][];
-    width: number;
-    height: number;
+    N: number;
 
     start: Point;
-
-    shortestDistsBase: number[][]
 
     constructor(origInput: string) {
         super(origInput);
@@ -31,181 +27,55 @@ export default class Day21 extends Solver {
             return c === "#" ? 1 : 0;
         }))
 
-        this.height = this.map.length;
-        this.width = this.map[0].length;
+        this.N = this.map.length;
 
 
+    }
+
+    part1(): string | number {
+        const m = this.emptyMatrix();
+        this.setValue(m, this.start, 0);
+        const ret = this.fillAMatrix(m, this.start, 64);
+        return this.count(ret, 0);
+    }
+
+    private emptyMatrix(): number[][] {
+        return _.times(this.N, () => _.times(this.N, _.constant(undefined)));
     }
 
     private nextSteps(p: Point): Point[] {
         return DIRECTIONS.map(d => p.translate(d)).filter(p => this.isIn(p)).filter(p => this.isFree(p));
     }
 
+
     private isFree(p: Point): boolean {
         return this.map[p.x][p.y] === 0;
-
     }
-
 
     private isIn(p: Point): boolean {
-        return p.x >= 0 && p.x < this.height && p.y >= 0 && p.y < this.width;
+        return p.x >= 0 && p.x < this.N && p.y >= 0 && p.y < this.N;
     }
 
-    private findReachablesFrom(start: Point, max: number): Point[] {
-        const visited: HashSet<Point> = new HashSet<Point>();
-        visited.add(start);
-        let nexts = [start];
-        for (let i = 0; i < max; i++) {
-            const nextSet = new HashSet<Point>();
-            for (let next of nexts) {
-                const nextNexts = this.nextSteps(next).filter(p => !visited.has(p))
-                nextNexts.forEach(n => nextSet.add(n));
-            }
-
-            nexts = nextSet.toArray();
-
-
-            for (let next of nexts) {
-                visited.add(next);
-            }
-        }
-        return visited.toArray();
-    }
-
-
-    part1(): string | number {
-        return this.findReachablesFrom(this.start, 64).filter(p => manhattanDist(p, this.start) % 2 === 0).length;
-    }
-
-    private fillAMatrix2(origM: number[][], starts: Point[]): number[][] {
+    private fillAMatrix(origM: number[][], start: Point, stop?: number): number[][] {
         const retM = _.cloneDeep(origM);
-        let currents = starts;
+        let currents = [start];
+        let step = this.getValue(retM, start)
 
-        while (currents.length > 0) {
+        while (currents.length > 0 && (stop === undefined || step <= stop)) {
+            step++;
             let nextsSet = new HashSet<Point>();
             for (let current of currents) {
                 const neighbours = this.nextSteps(current);
                 for (let neighbour of neighbours) {
                     if (this.getValue(retM, neighbour) === undefined) {
-                        this.setValue(retM, neighbour, this.getValue(retM, current)+1)
+                        this.setValue(retM, neighbour, step)
                         nextsSet.add(neighbour);
-                    } else {
-                        const existingV = this.getValue(retM, neighbour);
-                        const newV = this.getValue(retM, current) + 1;
-                        if (newV < existingV) {
-                            this.setValue(retM, neighbour, newV);
-                            nextsSet.add(neighbour);
-                        }
                     }
                 }
             }
             currents = nextsSet.toArray();
         }
-
-
         return retM;
-    }
-
-    private fillAMatrix(origM: number[][], start: Point): number[][] {
-        const retM = _.cloneDeep(origM);
-        let nexts = [start];
-        let step = retM[start.x][start.y];
-
-
-        while (nexts.length > 0) {
-            step++;
-            const nextSet = new HashSet<Flatten.Point>();
-            for (let next of nexts) {
-                const nextNexts = this.nextSteps(next).filter(p => retM[p.x][p.y] === undefined);
-                nextNexts.forEach(p => {
-                    nextSet.add(p);
-                    retM[p.x][p.y] = step;
-                });
-            }
-            nexts = nextSet.toArray();
-        }
-
-        return retM;
-    }
-
-    private fillMatrixFromExisting(origM: number[][]): number[][] {
-        const startPoints = this.findDefinedPoints(origM);
-        return this.fillAMatrix2(origM, startPoints);
-    }
-
-    private findDefinedPoints(m: number[][]): Point[] {
-        const ret: Point[] = [];
-        for (let i = 0; i < m.length; i++) {
-            for (let j = 0; j < m[i].length; j++) {
-                if (m[i][j] !== undefined) {
-                    ret.push(new Point(i, j));
-                }
-            }
-        }
-
-        return ret;
-
-    }
-
-    private emptyMatrix() {
-        return _.times(this.height, () => _.times(this.width, _.constant(undefined)));
-    }
-
-    private createProfile(v: number[]): number[] {
-        const min = Math.min(...v.filter(n => n !== undefined));
-        return v.map(n => n === undefined ? undefined : n - min);
-    }
-
-    private findPeriodicityDown(baseM: number[][]): {first: number; period: number} {
-        const lastVs: number[][] = [];
-        let lastV = _.last(baseM);
-        lastVs.push(this.createProfile(lastV));
-        let repetition = this.findRepetition(lastVs);
-
-        let newM;
-
-        while (true) {
-            if (repetition !== undefined) {
-                return repetition;
-            }
-            newM = this.emptyMatrix();
-            newM[0] = lastV.map(n => n !== undefined ? n + 1: undefined);
-            newM = this.fillMatrixFromExisting(newM);
-            lastV = _.last(newM);
-            lastVs.push(this.createProfile(lastV));
-            repetition = this.findRepetition(lastVs);
-        }
-    }
-
-    private findRepetition(lastVs: number[][]): {first: number; period: number} {
-        if (lastVs.length <= 1) {
-            return undefined;
-        }
-
-        for (let i = lastVs.length - 2; i >= 0; i--) {
-            for (let j = i +1 ; j < lastVs.length; j++) {
-                if (_.isEqual(lastVs[i], lastVs[j])) {
-                    return  {
-                        first: i, period: j-i
-                    }
-                }
-            }
-        }
-
-        return undefined;
-
-
-    }
-
-    part2(): string | number {
-        const emptyM = this.emptyMatrix();
-        emptyM[this.start.x][this.start.y] = 0;
-        this.shortestDistsBase = this.fillAMatrix2(emptyM, [this.start]);
-
-
-        console.log(this.findPeriodicityDown(this.shortestDistsBase));
-
-        return undefined;
     }
 
     private getValue(m: number[][], p: Point) {
@@ -215,8 +85,129 @@ export default class Day21 extends Solver {
     private setValue(m: number[][], p: Point, v: number) {
         m[p.x][p.y] = v;
     }
+
+    private count(m: number[][], mod: number): number {
+        return m.flatMap(l => l).filter(n => n !== undefined && n % 2 === mod).length;
+    }
+
+    part2(): string | number {
+        let centerMatrix = this.emptyMatrix();
+        this.setValue(centerMatrix, this.start, 0);
+        centerMatrix = this.fillAMatrix(centerMatrix, this.start);
+        const middleIdx = (this.N - 1) / 2;
+
+        //number of [even, odd] distances in a matrix with ODD manhattan dist from center matrix
+        const evenManhDistsSum = [this.count(centerMatrix, 0), this.count(centerMatrix, 1)];
+        //number of [even, odd] distances in a matrix with EVEN manhattan dist from center matrix
+        const oddManhDistsSum = [evenManhDistsSum[1], evenManhDistsSum[0]];
+
+
+        const STEPS = 26501365;
+        const MOD = STEPS % 2;
+
+        //get ds for which minAxial <= STEPS <= maxAxial
+        const partialAxialDs = _.range(Math.ceil((STEPS - 130) / 131), Math.floor((STEPS + 65) / 131) + 1);
+        const partialDiagonalDs = _.range(Math.ceil((STEPS - 130) / 131), Math.floor((STEPS + 130) / 131) + 1);
+
+
+        let ret = 0;
+
+        //sum up number of places in matrixes that are fully covered
+        const fullyIncludedD = Math.min(...partialDiagonalDs, ...partialAxialDs) - 1;
+
+        const analResultCovered = analyzeExtendedMaps(fullyIncludedD);
+        ret += analResultCovered.odds * oddManhDistsSum[MOD];
+        ret += analResultCovered.evens * evenManhDistsSum[MOD];
+
+        const axisStartPoints = [
+            new Point(0, middleIdx),
+            new Point(middleIdx, 0),
+            new Point(this.N - 1, middleIdx),
+            new Point(middleIdx, this.N - 1)
+        ]
+
+        const cornerStartPoints = [
+            new Point(0, 0),
+            new Point(0, this.N - 1),
+            new Point(this.N - 1, 0),
+            new Point(this.N - 1, this.N - 1)
+        ]
+
+        //sum up partially covered axial matrixes
+
+        for (let partialAxialD of partialAxialDs) {
+            const {minAxial} = calculateMinMaxDists(partialAxialD);
+            ret += _.sum(axisStartPoints.map(start => {
+                let m = this.emptyMatrix();
+                this.setValue(m, start, minAxial);
+                return this.fillAMatrix(m, start, STEPS);
+            }).map(m => this.count(m, MOD)));
+        }
+
+
+        //sum up partially covered diagonal matrixes
+
+        for (let partialDiagonalD of partialDiagonalDs) {
+            const {minDiagonal} = calculateMinMaxDists(partialDiagonalD);
+            const matrixesOnQuarterDiagonal = partialDiagonalD - 1;
+            ret += _.sum(cornerStartPoints.map(start => {
+                let m = this.emptyMatrix();
+                this.setValue(m, start, minDiagonal);
+                return this.fillAMatrix(m, start, STEPS);
+            }).map(m => matrixesOnQuarterDiagonal*this.count(m, MOD)));
+        }
+
+
+        return ret;
+    }
 }
 
-function manhattanDist(p1: Point, p2: Point) {
-    return Math.abs(p1.x - p2.x) + Math.abs(p1.y - p2.y);
+interface MinMaxDists {
+    minAxial: number,
+    maxAxial: number,
+    minDiagonal: number,
+    maxDiagonal: number;
 }
+
+function calculateMinMaxDists(d: number): MinMaxDists {
+    const minAxial = 131 * d - 65;
+    const maxAxial = 131 * d + 130;
+    const minDiagonal = 131 * d - 130;
+    const maxDiagonal = 131 * d + 130;
+
+    return { minAxial, maxAxial, minDiagonal, maxDiagonal };
+}
+
+
+interface AnalResult {
+    area: number,
+    boundary: number,
+    internal: number,
+    totalCovered: number,
+    diagonalBoundary: number,
+    evens: number,
+    odds: number
+
+}
+
+
+function analyzeExtendedMaps(ext: number): AnalResult {
+    const area = 2 * ext * ext;
+    const boundary = 4 + 4 * (ext - 1);
+    const internal = area + 1 - boundary / 2;
+    const totalCovered = boundary + internal;
+    const diagonalBoundary = 4 * (ext - 1);
+    const totalSameMods = (ext + 1) * (ext + 1);
+    const totalOtherMods = (ext) * (ext);
+    const totalMods = totalSameMods + totalOtherMods;
+    if (totalMods !== totalCovered) {
+        throw new Error("sry")
+    }
+    const evens = ext % 2 === 0 ? totalSameMods : totalOtherMods;
+    const odds = ext % 2 === 1 ? totalSameMods : totalOtherMods;
+
+    return { area, boundary, internal, totalCovered, diagonalBoundary, evens, odds };
+
+
+}
+
