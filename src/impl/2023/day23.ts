@@ -1,14 +1,12 @@
 import { Solver } from "../solver";
 import { Point, Vector } from "@flatten-js/core";
 import { Parsers } from "../../util/inputParser";
-import { DirectedGraph } from "graphology";
+import Graph, { DirectedGraph } from "graphology";
 import { HashMap } from "../../util/hashMap";
 import { allSimplePaths } from "graphology-simple-path";
-import MatrixExt from "../../util/matrixExt";
 import { HashSet } from "../../util/hashSet";
 import { dijkstra } from "graphology-shortest-path";
 import { distance } from "mathjs";
-import { isUtf8 } from "buffer";
 
 const UP = new Vector(-1, 0);
 const DOWN = new Vector(1, 0);
@@ -40,7 +38,8 @@ export default class Day23 extends Solver {
 
     vectors: HashMap<Point, Vector> = new HashMap<Flatten.Point, Flatten.Vector>(p => toStr(p));
 
-    graph = new DirectedGraph();
+    directedGraph = new DirectedGraph();
+    undirectedGraph = new DirectedGraph();
 
     adj: number[][] = [];
     nodes = new HashMap<string, number>();
@@ -72,11 +71,11 @@ export default class Day23 extends Solver {
 
     }
 
-    private buildGraph(part1 = true) {
+    private buildDirectedGraph() {
         for (let i = 0; i < this.N; i++) {
             for (let j = 0; j < this.N; j++) {
                 if (this.isFree(new Point(i, j))) {
-                    this.graph.addNode(toStr(new Point(i, j)));
+                    this.directedGraph.addNode(toStr(new Point(i, j)));
                 }
             }
         }
@@ -86,11 +85,38 @@ export default class Day23 extends Solver {
                 const p = new Point(i, j);
                 if (this.isFree(p)) {
                     let n = this.nextSteps(p);
-                    if (part1 && this.map[i][j] === 2) {
+                    if (this.map[i][j] === 2) {
                         n = [p.translate(this.vectors.get(p))];
                     }
                     for (let t of n) {
-                        this.graph.addEdge(toStr(p), toStr(t));
+                        this.directedGraph.addEdge(toStr(p), toStr(t));
+                    }
+                }
+            }
+        }
+    }
+
+    private buildUndirectedGraph() {
+        for (let i = 0; i < this.N; i++) {
+            for (let j = 0; j < this.N; j++) {
+                if (this.isFree(new Point(i, j))) {
+                    this.undirectedGraph.addNode(toStr(new Point(i, j)));
+                }
+            }
+        }
+
+        for (let i = 0; i < this.N; i++) {
+            for (let j = 0; j < this.N; j++) {
+                const p = new Point(i, j);
+                if (this.isFree(p)) {
+                    let n = this.nextSteps(p);
+                    for (let t of n) {
+                        const pp = toStr(p);
+                        const tt = toStr(t);
+                        if (!this.undirectedGraph.edges(pp).map(e => this.undirectedGraph.opposite(pp, e)).includes(tt)){
+                            this.undirectedGraph.addEdge(pp,tt, {weight: 1});
+                            this.undirectedGraph.addEdge(tt,pp, {weight: 1});
+                        }
                     }
                 }
             }
@@ -99,12 +125,12 @@ export default class Day23 extends Solver {
 
     private buildAdjList() {
 
-        this.adj = Array(this.graph.nodes().length);
-        this.graph.nodes().forEach((n, i) => this.nodes.set(n, i));
-        for (let node of this.graph.nodes()) {
-            const outs = this.graph.outEdges(node);
+        this.adj = Array(this.directedGraph.nodes().length);
+        this.directedGraph.nodes().forEach((n, i) => this.nodes.set(n, i));
+        for (let node of this.directedGraph.nodes()) {
+            const outs = this.directedGraph.outEdges(node);
             for (let out of outs) {
-                const other = this.graph.opposite(node, out);
+                const other = this.directedGraph.opposite(node, out);
                 if (this.adj[this.idxOf(node)] === undefined) {
                     this.adj[this.idxOf(node)] = [];
                 }
@@ -133,8 +159,8 @@ export default class Day23 extends Solver {
     }
 
     part1(): string | number {
-        this.buildGraph();
-        const paths = allSimplePaths(this.graph, toStr(this.start), toStr(this.end));
+        this.buildDirectedGraph();
+        const paths = allSimplePaths(this.directedGraph, toStr(this.start), toStr(this.end));
 
         return Math.max(...paths.map(p => p.length))-1;
     }
@@ -147,19 +173,96 @@ export default class Day23 extends Solver {
         m[p.x][p.y] = v;
     }
 
+    private trimGraph(g: Graph)  {
+        const bis = g.nodes().filter(n => g.edges(n).length === 4);
+        const bisRemoved = new Set<string>();
+        for (let bi of bis) {
+            if (bisRemoved.has(bi)) {
+                continue;
+            }
+            const {start, end} = this.findChainOf(g, bi);
+            const path = dijkstra.bidirectional(g, start, end);
+            if (path === null) {
+                let i = 0;
+            }
+            for (let i = 1; i < path.length -1 ; i++) {
+                g.dropNode(path[i]);
+                bisRemoved.add(path[i]);
+            }
+            g.addEdge(start, end, {weight: path.length-1});
+        }
+
+
+    }
+
+    private findChainOf(g: Graph, node: string): {start: string, end: string} {
+        let start;
+        let end;
+
+        const visited = new Set<string>();
+        let current = node;
+        while (true) {
+            let next = g.opposite(current, g.edges(current)[0]);
+            if (visited.has(next)) {
+                next = g.opposite(current, g.edges(current)[1]);
+            }
+            visited.add(next);
+            if (g.edges(next).length !== 4) {
+                start = next;
+                break;
+            }
+            current = next;
+        }
+
+        while (true) {
+            let next = g.opposite(current, g.edges(current)[0]);
+            if (visited.has(next)) {
+                next = g.opposite(current, g.edges(current)[1]);
+            }
+            visited.add(next);
+            if (g.edges(next).length !== 2) {
+                end = next;
+                break;
+            }
+            current = next;
+        }
+
+        return {start, end}
+    }
+
 
 
     part2(): string | number {
-        this.buildGraph(false);
-        this.buildAdjList();
-        const t1 = bfs(this.idxOf(toStr(this.start)), this.graph.nodes().length, this.adj);
-        const t2 = bfs(t1.first,this.graph.nodes().length, this.adj );
 
-        console.log(t2);
+        this.buildDirectedGraph();
 
 
 
-        return t2.second;
+
+        console.log(`all nodes: ${this.undirectedGraph.nodes().length}`)
+        console.log(`bi-connections: ${this.undirectedGraph.nodes().filter(n => this.undirectedGraph.edges(n).length === 2).length}`)
+        console.log(`tri-connections: ${this.undirectedGraph.nodes().filter(n => this.undirectedGraph.edges(n).length === 3).length}`)
+        console.log(`4-connections: ${this.undirectedGraph.nodes().filter(n => this.undirectedGraph.edges(n).length === 4).length}`)
+
+        const bis =  this.undirectedGraph.nodes().filter(n => this.undirectedGraph.edges(n).length === 2);
+        // console.log(this.findChainOf(this.undirectedGraph, bis[0]));
+        this.trimGraph(this.undirectedGraph);
+        console.log(`all nodes: ${this.undirectedGraph.nodes().length}`)
+        console.log(`bi-connections: ${this.undirectedGraph.nodes().filter(n => this.undirectedGraph.edges(n).length === 2).length}`)
+        console.log(`tri-connections: ${this.undirectedGraph.nodes().filter(n => this.undirectedGraph.edges(n).length === 3).length}`)
+        console.log(`4-connections: ${this.undirectedGraph.nodes().filter(n => this.undirectedGraph.edges(n).length === 4).length}`)
+
+
+        return "";
+
+        // this.buildAdjList();
+        // const t1 = bfs(this.idxOf(toStr(this.start)), this.directedGraph.nodes().length, this.adj);
+        // const t2 = bfs(t1.first,this.directedGraph.nodes().length, this.adj );
+
+        // console.log(t2);
+        //
+        //
+        //
         //
         // const start = toStr(this.start);
         // const end = toStr(this.end);
