@@ -1,12 +1,9 @@
 import { Solver } from "../solver";
 import { Point, Vector } from "@flatten-js/core";
 import { Parsers } from "../../util/inputParser";
-import Graph, { DirectedGraph } from "graphology";
+import Graph, { DirectedGraph, UndirectedGraph } from "graphology";
 import { HashMap } from "../../util/hashMap";
 import { allSimplePaths } from "graphology-simple-path";
-import { HashSet } from "../../util/hashSet";
-import { dijkstra } from "graphology-shortest-path";
-import { distance } from "mathjs";
 
 const UP = new Vector(-1, 0);
 const DOWN = new Vector(1, 0);
@@ -39,12 +36,7 @@ export default class Day23 extends Solver {
     vectors: HashMap<Point, Vector> = new HashMap<Flatten.Point, Flatten.Vector>(p => toStr(p));
 
     directedGraph = new DirectedGraph();
-    undirectedGraph = new DirectedGraph();
-
-    adj: number[][] = [];
-    nodes = new HashMap<string, number>();
-
-
+    undirectedGraph = new UndirectedGraph();
 
     constructor(origInput: string) {
         super(origInput);
@@ -63,10 +55,7 @@ export default class Day23 extends Solver {
         this.N = this.map.length;
 
         this.start = new Point(0, this.map[0].indexOf(1));
-        this.end = new Point(this.N-1, this.map[this.N-1].indexOf(1));
-
-
-
+        this.end = new Point(this.N - 1, this.map[this.N - 1].indexOf(1));
 
 
     }
@@ -113,37 +102,13 @@ export default class Day23 extends Solver {
                     for (let t of n) {
                         const pp = toStr(p);
                         const tt = toStr(t);
-                        if (!this.undirectedGraph.edges(pp).map(e => this.undirectedGraph.opposite(pp, e)).includes(tt)){
-                            this.undirectedGraph.addEdge(pp,tt, {weight: 1});
-                            this.undirectedGraph.addEdge(tt,pp, {weight: 1});
+                        if (this.undirectedGraph.edge(pp, tt) === undefined) {
+                            this.undirectedGraph.addEdge(pp, tt);
                         }
                     }
                 }
             }
         }
-    }
-
-    private buildAdjList() {
-
-        this.adj = Array(this.directedGraph.nodes().length);
-        this.directedGraph.nodes().forEach((n, i) => this.nodes.set(n, i));
-        for (let node of this.directedGraph.nodes()) {
-            const outs = this.directedGraph.outEdges(node);
-            for (let out of outs) {
-                const other = this.directedGraph.opposite(node, out);
-                if (this.adj[this.idxOf(node)] === undefined) {
-                    this.adj[this.idxOf(node)] = [];
-                }
-                this.adj[this.idxOf(node)].push(this.idxOf(other));
-            }
-        }
-
-        console.log(this.adj);
-
-    }
-
-    private idxOf(node: string) {
-        return this.nodes.get(node);
     }
 
     private nextSteps(p: Point): Point[] {
@@ -162,242 +127,108 @@ export default class Day23 extends Solver {
         this.buildDirectedGraph();
         const paths = allSimplePaths(this.directedGraph, toStr(this.start), toStr(this.end));
 
-        return Math.max(...paths.map(p => p.length))-1;
+        return Math.max(...paths.map(p => p.length)) - 1;
     }
 
-    private getV(m: number[][], p: Point) {
-        return m[p.x][p.y];
-    }
-
-    private setV(m: number[][], p: Point, v: number) {
-        m[p.x][p.y] = v;
-    }
-
-    private trimGraph(g: Graph)  {
-        const bis = g.nodes().filter(n => g.edges(n).length === 4);
-        const bisRemoved = new Set<string>();
+    private getPairs(g: Graph): { start: string, end: string, seq: string[] }[] {
+        const bis = g.nodes().filter(n => g.edges(n).length === 2);
+        const bisVisited = new Set<string>();
+        const ret: { start: string, end: string, seq: string[] }[] = [];
         for (let bi of bis) {
-            if (bisRemoved.has(bi)) {
+            if (bisVisited.has(bi)) {
                 continue;
             }
-            const {start, end} = this.findChainOf(g, bi);
-            const path = dijkstra.bidirectional(g, start, end);
-            if (path === null) {
-                let i = 0;
-            }
-            for (let i = 1; i < path.length -1 ; i++) {
-                g.dropNode(path[i]);
-                bisRemoved.add(path[i]);
-            }
-            g.addEdge(start, end, {weight: path.length-1});
+            const { start, end, seq } = this.findChainOf2(g, bi);
+            seq.forEach(e => bisVisited.add(e));
+            ret.push({ start, end, seq })
         }
-
-
+        return ret;
     }
 
-    private findChainOf(g: Graph, node: string): {start: string, end: string} {
+
+    private findChainOf2(g: UndirectedGraph, node: string): { start: string, end: string, seq: string[] } {
         let start;
         let end;
+        let seq: string[] = [];
 
         const visited = new Set<string>();
-        let current = node;
-        while (true) {
-            let next = g.opposite(current, g.edges(current)[0]);
-            if (visited.has(next)) {
-                next = g.opposite(current, g.edges(current)[1]);
-            }
-            visited.add(next);
-            if (g.edges(next).length !== 4) {
-                start = next;
-                break;
-            }
-            current = next;
-        }
+        visited.add(node);
 
-        while (true) {
-            let next = g.opposite(current, g.edges(current)[0]);
-            if (visited.has(next)) {
-                next = g.opposite(current, g.edges(current)[1]);
-            }
-            visited.add(next);
-            if (g.edges(next).length !== 2) {
-                end = next;
-                break;
-            }
-            current = next;
-        }
+        seq.push(node);
 
-        return {start, end}
+        const branches = g.edges(node).map(e => g.opposite(node, e));
+        let current = branches[0];
+        while (g.edges(current).length === 2) {
+            // console.log(current);
+            visited.add(current);
+            seq.push(current);
+            current = g.edges(current).map(e => g.opposite(current, e)).filter(n => !visited.has(n))[0];
+        }
+        start = current;
+        // console.log(`start = ${current}`)
+        seq.reverse();
+
+        current = branches[1]
+        while (g.edges(current).length === 2) {
+            // console.log(current);
+            visited.add(current);
+            seq.push(current)
+            current = g.edges(current).map(e => g.opposite(current, e)).filter(n => !visited.has(n))[0];
+        }
+        end = current;
+        // console.log(`end = ${current}`)
+
+
+        return { start, end, seq };
     }
 
+    private sumWeight(g: UndirectedGraph, path: string[]) {
+        let ret = 0;
+        for (let i = 0; i < path.length - 1; i++) {
+            ret += g.getEdgeAttribute(g.edges(path[i], path[i + 1]), "weight");
+        }
+        return ret;
+    }
 
 
     part2(): string | number {
 
-        this.buildDirectedGraph();
+        const startTime = new Date().getTime();
 
+        this.buildUndirectedGraph();
 
+        const pairs = this.getPairs(this.undirectedGraph);
+        const g = new UndirectedGraph();
+        for (let pair of pairs) {
+            if (!g.hasNode(pair.start)) {
+                g.addNode(pair.start);
+            }
 
+            if (!g.hasNode(pair.end)) {
+                g.addNode(pair.end)
+            }
 
-        console.log(`all nodes: ${this.undirectedGraph.nodes().length}`)
-        console.log(`bi-connections: ${this.undirectedGraph.nodes().filter(n => this.undirectedGraph.edges(n).length === 2).length}`)
-        console.log(`tri-connections: ${this.undirectedGraph.nodes().filter(n => this.undirectedGraph.edges(n).length === 3).length}`)
-        console.log(`4-connections: ${this.undirectedGraph.nodes().filter(n => this.undirectedGraph.edges(n).length === 4).length}`)
-
-        const bis =  this.undirectedGraph.nodes().filter(n => this.undirectedGraph.edges(n).length === 2);
-        // console.log(this.findChainOf(this.undirectedGraph, bis[0]));
-        this.trimGraph(this.undirectedGraph);
-        console.log(`all nodes: ${this.undirectedGraph.nodes().length}`)
-        console.log(`bi-connections: ${this.undirectedGraph.nodes().filter(n => this.undirectedGraph.edges(n).length === 2).length}`)
-        console.log(`tri-connections: ${this.undirectedGraph.nodes().filter(n => this.undirectedGraph.edges(n).length === 3).length}`)
-        console.log(`4-connections: ${this.undirectedGraph.nodes().filter(n => this.undirectedGraph.edges(n).length === 4).length}`)
-
-
-        return "";
-
-        // this.buildAdjList();
-        // const t1 = bfs(this.idxOf(toStr(this.start)), this.directedGraph.nodes().length, this.adj);
-        // const t2 = bfs(t1.first,this.directedGraph.nodes().length, this.adj );
-
-        // console.log(t2);
-        //
-        //
-        //
-        //
-        // const start = toStr(this.start);
-        // const end = toStr(this.end);
-        // let shortest = dijkstra.bidirectional(this.graph, start, end);
-        //
-        // let found = true;
-        // let step = 0;
-        // while (found) {
-        //     found = false;
-        //     shortest = dijkstra.bidirectional(this.graph, start, end);
-        //     console.log(`iteration ${++step}, status: ${shortest.length-1}`);
-        //     for (let i = 0; i < shortest.length-1; i++) {
-        //     // for (let i = shortest.length - 2 ; i >= 0; i--) {
-        //         const edge = this.graph.edge(shortest[i], shortest[i+1]);
-        //         this.graph.dropEdge(edge);
-        //         let newShortest = dijkstra.bidirectional(this.graph, start, end);
-        //         if (newShortest !== null) {
-        //             found = true;
-        //             shortest = dijkstra.bidirectional(this.graph, start, end);
-        //             console.log(`         status: ${shortest.length}`);
-        //             // break;
-        //         } else {
-        //             this.graph.addEdge(shortest[i], shortest[i+1]);
-        //         }
-        //
-        //
-        //     }
-        // }
-        //
-        // // const paths = this.findAllPathsIterative(this.start, this.end);
-        // // return paths.length;
-        // return shortest.length-1;
-    }
-
-    private findAllPaths(source: Point, target: Point, path: Point[] = [], visited: HashSet<Point> = new HashSet<Flatten.Point>()): Point[][] {
-        console.log(toStr(source));
-        path = [...path, source];
-        visited.add(source);
-
-        if (source === target) {
-            return [path];
+            g.addEdge(pair.start, pair.end, { weight: pair.seq.length + 1 });
         }
 
-        let paths: Point[][] = [];
-        for (const neighbor of this.nextSteps(source)) {
-            if (!visited.has(neighbor)) {
-                const newHashSet = new HashSet<Point>();
-                newHashSet.addAll(...visited.toArray())
-                const newPaths = this.findAllPaths(neighbor, target, path, newHashSet);
-                paths = paths.concat(newPaths);
+
+        const allPaths = allSimplePaths(g, toStr(this.start), toStr(this.end));
+        const lengths = allPaths.map(p => this.sumWeight(g, p));
+
+
+        const res = this.findMax(lengths);
+        return res;
+
+    }
+
+    private findMax(ns: number[]) {
+        let max = 0;
+        for (let n of ns) {
+            if (n > max) {
+                max = n;
             }
         }
-
-        return paths;
+        return max;
     }
-
-    private findAllPathsIterative(source: Point, target: Point): Point[][] {
-        const stack: { node: Point, path: Point[] }[] = [];
-        const paths: Point[][] = [];
-        const visited: Set<Point> = new Set();
-
-        stack.push({ node: source, path: [] });
-
-        while (stack.length > 0) {
-            const { node, path } = stack.pop()!;
-            visited.add(node);
-            const currentPath = [...path, node];
-
-            if (node === target) {
-                paths.push(currentPath);
-            } else {
-                const neighbors = this.nextSteps(node);
-                for (const neighbor of neighbors) {
-                    if (!visited.has(neighbor)) {
-                        stack.push({ node: neighbor, path: currentPath });
-                    }
-                }
-            }
-        }
-
-        return paths;
-    }
-
 }
 
-
-// Utility Pair class for storing
-// maximum distance Node with its distance
-class Pair {
-    // Constructor
-    constructor(public first: number, public second: number) {}
-}
-
-
-
-
-// Method returns the farthest node and
-// its distance from node u
-function bfs(u: number, V: number, adj: number[][]): Pair {
-    const dis: number[] = Array(V);
-
-    // mark all distances with -1
-    for (let i = 0; i < V; i++) dis[i] = -1;
-    const q: number[] = [];
-    q.push(u);
-
-    // distance of u from u will be 0
-    dis[u] = 0;
-    while (q.length !== 0) {
-        const t = q.shift();
-
-        // loop for all adjacent nodes of node-t
-        for (let i = 0; i < adj[t].length; ++i) {
-            const v = adj[t][i];
-
-            // push node into the queue only if
-            // it is not visited already
-            if (dis[v] === -1) {
-                q.push(v);
-
-                // make the distance of v one more
-                // than the distance of t
-                dis[v] = dis[t] + 1;
-            }
-        }
-    }
-    let maxDis = 0;
-    let nodeIdx = 0;
-
-    // get the farthest node distance and its index
-    for (let i = 0; i < V; ++i) {
-        if (dis[i] > maxDis) {
-            maxDis = dis[i];
-            nodeIdx = i;
-        }
-    }
-    return new Pair(nodeIdx, maxDis);
-}
