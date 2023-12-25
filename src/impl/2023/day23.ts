@@ -8,6 +8,7 @@ import MatrixExt from "../../util/matrixExt";
 import { HashSet } from "../../util/hashSet";
 import { dijkstra } from "graphology-shortest-path";
 import { distance } from "mathjs";
+import { isUtf8 } from "buffer";
 
 const UP = new Vector(-1, 0);
 const DOWN = new Vector(1, 0);
@@ -40,6 +41,9 @@ export default class Day23 extends Solver {
     vectors: HashMap<Point, Vector> = new HashMap<Flatten.Point, Flatten.Vector>(p => toStr(p));
 
     graph = new DirectedGraph();
+
+    adj: number[][] = [];
+    nodes = new HashMap<string, number>();
 
 
 
@@ -93,6 +97,29 @@ export default class Day23 extends Solver {
         }
     }
 
+    private buildAdjList() {
+
+        this.adj = Array(this.graph.nodes().length);
+        this.graph.nodes().forEach((n, i) => this.nodes.set(n, i));
+        for (let node of this.graph.nodes()) {
+            const outs = this.graph.outEdges(node);
+            for (let out of outs) {
+                const other = this.graph.opposite(node, out);
+                if (this.adj[this.idxOf(node)] === undefined) {
+                    this.adj[this.idxOf(node)] = [];
+                }
+                this.adj[this.idxOf(node)].push(this.idxOf(other));
+            }
+        }
+
+        console.log(this.adj);
+
+    }
+
+    private idxOf(node: string) {
+        return this.nodes.get(node);
+    }
+
     private nextSteps(p: Point): Point[] {
         return DIRECTIONS.map(d => p.translate(d)).filter(p => this.isIn(p)).filter(p => this.isFree(p));
     }
@@ -120,40 +147,51 @@ export default class Day23 extends Solver {
         m[p.x][p.y] = v;
     }
 
+
+
     part2(): string | number {
         this.buildGraph(false);
+        this.buildAdjList();
+        const t1 = bfs(this.idxOf(toStr(this.start)), this.graph.nodes().length, this.adj);
+        const t2 = bfs(t1.first,this.graph.nodes().length, this.adj );
 
-        const start = toStr(this.start);
-        const end = toStr(this.end);
-        let shortest = dijkstra.bidirectional(this.graph, start, end);
-
-        let found = true;
-        let step = 0;
-        while (found) {
-            found = false;
-            shortest = dijkstra.bidirectional(this.graph, start, end);
-            console.log(`iteration ${++step}, status: ${shortest.length-1}`);
-            // for (let i = 0; i < shortest.length-1; i++) {
-            for (let i = shortest.length - 2 ; i >= 0; i--) {
-                const edge = this.graph.edge(shortest[i], shortest[i+1]);
-                this.graph.dropEdge(edge);
-                let newShortest = dijkstra.bidirectional(this.graph, start, end);
-                if (newShortest !== null) {
-                    found = true;
-                    shortest = dijkstra.bidirectional(this.graph, start, end);
-                    console.log(`         status: ${shortest.length}`);
-                    // break;
-                } else {
-                    this.graph.addEdge(shortest[i], shortest[i+1]);
-                }
+        console.log(t2);
 
 
-            }
-        }
 
-        // const paths = this.findAllPathsIterative(this.start, this.end);
-        // return paths.length;
-        return shortest.length-1;
+        return t2.second;
+        //
+        // const start = toStr(this.start);
+        // const end = toStr(this.end);
+        // let shortest = dijkstra.bidirectional(this.graph, start, end);
+        //
+        // let found = true;
+        // let step = 0;
+        // while (found) {
+        //     found = false;
+        //     shortest = dijkstra.bidirectional(this.graph, start, end);
+        //     console.log(`iteration ${++step}, status: ${shortest.length-1}`);
+        //     for (let i = 0; i < shortest.length-1; i++) {
+        //     // for (let i = shortest.length - 2 ; i >= 0; i--) {
+        //         const edge = this.graph.edge(shortest[i], shortest[i+1]);
+        //         this.graph.dropEdge(edge);
+        //         let newShortest = dijkstra.bidirectional(this.graph, start, end);
+        //         if (newShortest !== null) {
+        //             found = true;
+        //             shortest = dijkstra.bidirectional(this.graph, start, end);
+        //             console.log(`         status: ${shortest.length}`);
+        //             // break;
+        //         } else {
+        //             this.graph.addEdge(shortest[i], shortest[i+1]);
+        //         }
+        //
+        //
+        //     }
+        // }
+        //
+        // // const paths = this.findAllPathsIterative(this.start, this.end);
+        // // return paths.length;
+        // return shortest.length-1;
     }
 
     private findAllPaths(source: Point, target: Point, path: Point[] = [], visited: HashSet<Point> = new HashSet<Flatten.Point>()): Point[][] {
@@ -205,4 +243,58 @@ export default class Day23 extends Solver {
         return paths;
     }
 
+}
+
+
+// Utility Pair class for storing
+// maximum distance Node with its distance
+class Pair {
+    // Constructor
+    constructor(public first: number, public second: number) {}
+}
+
+
+
+
+// Method returns the farthest node and
+// its distance from node u
+function bfs(u: number, V: number, adj: number[][]): Pair {
+    const dis: number[] = Array(V);
+
+    // mark all distances with -1
+    for (let i = 0; i < V; i++) dis[i] = -1;
+    const q: number[] = [];
+    q.push(u);
+
+    // distance of u from u will be 0
+    dis[u] = 0;
+    while (q.length !== 0) {
+        const t = q.shift();
+
+        // loop for all adjacent nodes of node-t
+        for (let i = 0; i < adj[t].length; ++i) {
+            const v = adj[t][i];
+
+            // push node into the queue only if
+            // it is not visited already
+            if (dis[v] === -1) {
+                q.push(v);
+
+                // make the distance of v one more
+                // than the distance of t
+                dis[v] = dis[t] + 1;
+            }
+        }
+    }
+    let maxDis = 0;
+    let nodeIdx = 0;
+
+    // get the farthest node distance and its index
+    for (let i = 0; i < V; ++i) {
+        if (dis[i] > maxDis) {
+            maxDis = dis[i];
+            nodeIdx = i;
+        }
+    }
+    return new Pair(nodeIdx, maxDis);
 }
