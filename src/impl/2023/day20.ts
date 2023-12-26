@@ -1,72 +1,148 @@
 import { Solver } from "../solver";
-import { DirectedGraph } from "graphology";
 import { Parsers } from "../../util/inputParser";
+import { finished } from "stream";
 
+interface Counter {
+    low: number;
+    high: number;
+}
 
 interface Pulse {
-    p: boolean;
-    from: string;
+    from: string,
+    to: string;
+    signal: Signal;
+}
+
+function of(from: string, to: string, signal: Signal): Pulse {
+    return {from, to, signal};
+}
+
+enum Signal {
+    L, H
+}
+
+enum State {
+    ON, OFF
 }
 
 interface Module {
-    type: "B" | "F" | "C";
-    in(signal: boolean, from?: string): void;
-    out(): boolean;
+    readonly type: "B" | "F" | "C" | "FF";
+    readonly targets: string[]
+    readonly sources: string[];
+    process(s: Signal, from?: string): Signal | undefined;
+    addTarget(module: string): void;
+    addSource(module: string): void;
+    reset(): void;
 }
 
-class Broadcaster implements Module {
-    readonly type = "B";
-    private toReturn: boolean;
-    in(signal: boolean) {
-        this.toReturn = signal;
+
+abstract class AbstractModule implements Module {
+    readonly sources: string[] = [];
+    readonly targets: string[] = [];
+    readonly type: "B" | "F" | "C" | "FF";
+
+    addSource(module: string): void {
+        this.sources.push(module);
     }
-    out(): boolean {
-        return this.toReturn;
+
+    addTarget(module: string): void {
+        this.targets.push(module);
+    }
+
+    abstract process(s: Signal, from?: string): Signal | undefined;
+    abstract reset(): void;
+}
+
+class Broadcaster extends AbstractModule{
+    readonly type: "B";
+
+
+    process(s: Signal): Signal {
+        return s;
+    }
+
+    reset(): void {
     }
 }
 
-class FlipFlop implements Module {
-    private state = false;
-    private toReturn: boolean;
+
+class FlipFlop extends AbstractModule {
     readonly type = "F";
-
-    in(signal: boolean) {
-        if (signal) {
-            this.toReturn = undefined;
+    state: State = State.OFF;
+    process(s: Signal): Signal | undefined{
+        if (s === Signal.H) {
+            return undefined;
         } else {
-            this.state = !this.state;
-            this.toReturn = !this.state;
+            if (this.state === State.ON) {
+                this.state = State.OFF;
+                return Signal.L;
+            } else {
+                this.state = State.ON;
+                return Signal.H;
+            }
         }
     }
 
-    out(): boolean {
-        return this.toReturn;
+    reset(): void {
+        this.state = State.OFF;
     }
 }
 
-class Conjunction implements Module {
-    private map = new Map<string, boolean>();
+class Final extends AbstractModule {
+    list: Signal[] = [];
+    readonly type = "FF";
+    process(s: Signal, from?: string): Signal | undefined {
+        this.list.push(s);
+        return undefined;
+    }
+
+        reset() {
+        this.list = [];
+    }
+
+}
+
+
+class Conjunction extends AbstractModule{
+    private map = new Map<string, Signal>();
     readonly type = "C";
 
-    addInput(from: string) {
-        this.map.set(from, false);
+
+    addSource(module: string) {
+        super.addSource(module);
+        this.map.set(module, Signal.L);
     }
 
-    in(signal: boolean, from: string) {
-        this.map.set(from, signal);
+    state(): Signal {
+        if ([...this.map.values()].every(s => s === Signal.H)) {
+            return Signal.L;
+        } else {
+            return Signal.H;
+        }
     }
 
-    out() {
-        return [...this.map.values()].some(v => !v);
+    process(s: Signal, from: string): Signal {
+        this.map.set(from, s);
+        return this.state();
+    }
+
+    reset() {
+        for (let key of this.map.keys()) {
+            this.map.set(key, Signal.L);
+        }
     }
 }
-
-
 
 export default class Day20 extends Solver {
 
+
     modules = new Map<string, Module>();
-    graph = new DirectedGraph();
+
+
+    constructor(origInput: string) {
+        super(origInput);
+        this.parse();
+    }
 
     private parse() {
         const lines = Parsers.asArray(this.origInput);
@@ -75,15 +151,12 @@ export default class Day20 extends Solver {
             let name = dat[0];
             if (name.startsWith("%")) {
                 name = name.substring(1);
-                this.graph.addNode(name);
                 this.modules.set(name, new FlipFlop())
             } else if (name.startsWith("&")) {
                 name = name.substring(1);
                 this.modules.set(name, new Conjunction());
-                this.graph.addNode(name);
             } else {
                 this.modules.set(name, new Broadcaster());
-                this.graph.addNode(name);
             }
         }
 
@@ -95,63 +168,98 @@ export default class Day20 extends Solver {
             let source = dat[0];
             source = source.search(/[%|&]/) !== -1 ? source.substring(1) : source;
             for (let target of targets) {
-                if (target === "output") {
-                    this.modules.set(target, new Broadcaster());
-                    this.graph.addNode(target);
+                if (this.modules.get(target) === undefined) {
+                    if (target === "rx") {
+                        this.modules.set(target, new Final())
+                    } else {
+                        this.modules.set(target, new Broadcaster())
+                    }
                 }
-                this.graph.addEdge(source, target);
-                const module = this.modules.get(target);
-                if (module.type === "C") {
-                    (module as Conjunction).addInput(source);
-                }
-            }
-        }
-    }
-
-    walk(): [number, number] {
-        let low = 0;
-        let high = 0;
-        low++;
-        let currentNodes = ["broadcaster"];
-        this.getModule("broadcaster").in(false);
-
-        while (currentNodes.length !== 0) {
-            let targetNodes = [];
-            let targetPulses = [];
-            for (let i = 0; i < currentNodes.length; i++) {
-                const currentNode = currentNodes[i];
-
-                const currentTargets = this.getTargets(currentNode);
-                const currentOutput = this.getModule(currentNode).out();
-
-                // const out = this.modules.get(currentNode).in(currentPulse.p, currentPulse.from);
-                const targets = this.getTargets(currentNode);
-
+                this.modules.get(source).addTarget(target);
+                this.modules.get(target).addSource(source);
             }
         }
 
-
-        return [low, high];
+        // console.log(this.modules.keys())
     }
 
-    private getModule(node: string): Module {
-        return this.modules.get(node);
+    private pushButton(counter: Counter) {
+        // console.log('push button')
+        const q: Pulse[] = [];
+        q.push(of(undefined, "broadcaster", Signal.L));
+        counter.low++;
+        while (q.length !== 0) {
+            const nextSign = q.shift();
+            // console.log(`${nextSign.from} -${nextSign.signal} --> ${nextSign.to}`)
+            const m = this.modules.get(nextSign.to);
+            const res = m.process(nextSign.signal, nextSign.from);
+            if (res === undefined) {
+                continue;
+            }
+            for (let target of m.targets) {
+                if (res === Signal.L) {
+                    counter.low++;
+                }else {
+                    counter.high++;
+                }
+                q.push(of(nextSign.to, target, res));
+            }
+        }
+
     }
 
-    private getTargets(node: string): string[] {
-        return this.graph.outEdges(node).map(e => this.graph.opposite(node, e));
+    resetAll() {
+        for (let key of this.modules.keys()) {
+            if (key === "rx") {
+                continue;
+            }
+            const m = this.modules.get(key);
+            m.reset();
+        }
     }
-
 
     part1(): string | number {
-        this.parse()
-        console.log(`nodes: ${this.graph.nodes().length}`)
-        console.log(`edges: ${this.graph.edges().length}`)
-        return undefined;
+        const counter: Counter = {low: 0, high: 0};
+        for (let i = 0; i < 1000; i++) {
+            this.pushButton(counter);
+        }
+
+
+        return counter.low * counter.high;
     }
 
     part2(): string | number {
-        return undefined;
+        const counter: Counter = {low: 0, high: 0};
+        let res = 0;
+        const finalModule = this.modules.get("rx") as Final;
+        const endNames = this.modules.get(finalModule.sources[0]).sources;
+        console.log(endNames);
+        const ends = endNames.map(e => this.modules.get(e) as Conjunction);
+        const endStates: number[][] = [];
+
+        while (res < 1000) {
+            res++;
+            for (let i = 0; i < res - 1; i++) {
+                this.pushButton(counter);
+            }
+            finalModule.reset();
+            console.log(ends.map(e => e.state()));
+            this.pushButton(counter);
+
+            if (finalModule.list.length === 1 && finalModule.list[0] === Signal.L) {
+                break;
+            }
+            console.log(ends.map(e => e.state()));
+
+            console.log();
+            // endStates.push(ends.map(e => e.state() === Signal.L ? 0 : 1))
+
+
+            // console.log(`res: ${res} : ${finalModule.list.length} && ${ends.map(e => (this.modules.get(e) as FlipFlop).state).join(", ")}`)
+            this.resetAll();
+        }
+
+        return res;
     }
 
 }
