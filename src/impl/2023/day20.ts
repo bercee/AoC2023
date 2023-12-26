@@ -1,6 +1,8 @@
+//I know, this is very ugly code, but i have officially exhausted. Will not optimize this.
+//Disclaimer: I cheated for this part, looked into reddit to have a hint what's going on.
 import { Solver } from "../solver";
 import { Parsers } from "../../util/inputParser";
-import { finished } from "stream";
+import { lcm } from "mathjs";
 
 interface Counter {
     low: number;
@@ -33,6 +35,7 @@ interface Module {
     addTarget(module: string): void;
     addSource(module: string): void;
     reset(): void;
+
 }
 
 
@@ -104,8 +107,9 @@ class Final extends AbstractModule {
 
 
 class Conjunction extends AbstractModule{
-    private map = new Map<string, Signal>();
+    map = new Map<string, Signal>();
     readonly type = "C";
+    counter: number;
 
 
     addSource(module: string) {
@@ -122,11 +126,17 @@ class Conjunction extends AbstractModule{
     }
 
     process(s: Signal, from: string): Signal {
+        this.counter++;
         this.map.set(from, s);
         return this.state();
     }
 
+    resetCounter() {
+        this.counter = 0;
+    }
+
     reset() {
+        this.counter = 0;
         for (let key of this.map.keys()) {
             this.map.set(key, Signal.L);
         }
@@ -137,6 +147,14 @@ export default class Day20 extends Solver {
 
 
     modules = new Map<string, Module>();
+
+    finalModule: Final;
+    finalParent : Conjunction
+    endNames: string[];
+    ends: Conjunction[];
+
+    endsFirstHigh: number[] = Array(4).fill(0);
+    res = 0;
 
 
     constructor(origInput: string) {
@@ -181,13 +199,22 @@ export default class Day20 extends Solver {
         }
 
         // console.log(this.modules.keys())
+
+        this.finalModule = this.modules.get("rx") as Final;
+        if (!this.finalModule) {
+            return;
+        }
+        this.finalParent = this.modules.get(this.finalModule.sources[0]) as Conjunction;
+        this.endNames = this.finalParent.sources;
+        this.ends = this.finalParent.sources.map(e => this.modules.get(e) as Conjunction);
     }
 
-    private pushButton(counter: Counter) {
+    private pushButton(counter?: Counter) {
+        this.res++;
         // console.log('push button')
         const q: Pulse[] = [];
         q.push(of(undefined, "broadcaster", Signal.L));
-        counter.low++;
+        counter && counter.low++;
         while (q.length !== 0) {
             const nextSign = q.shift();
             // console.log(`${nextSign.from} -${nextSign.signal} --> ${nextSign.to}`)
@@ -198,11 +225,16 @@ export default class Day20 extends Solver {
             }
             for (let target of m.targets) {
                 if (res === Signal.L) {
-                    counter.low++;
+                    counter && counter.low++;
                 }else {
-                    counter.high++;
+                    counter && counter.high++;
                 }
                 q.push(of(nextSign.to, target, res));
+                this.endNames.forEach((e, idx) => {
+                    if (nextSign.to === e && res === Signal.H && this.endsFirstHigh[idx] === 0) {
+                        this.endsFirstHigh[idx] = this.res;
+                    }
+                })
             }
         }
 
@@ -227,39 +259,15 @@ export default class Day20 extends Solver {
 
         return counter.low * counter.high;
     }
-
     part2(): string | number {
-        const counter: Counter = {low: 0, high: 0};
-        let res = 0;
-        const finalModule = this.modules.get("rx") as Final;
-        const endNames = this.modules.get(finalModule.sources[0]).sources;
-        console.log(endNames);
-        const ends = endNames.map(e => this.modules.get(e) as Conjunction);
-        const endStates: number[][] = [];
 
-        while (res < 1000) {
-            res++;
-            for (let i = 0; i < res - 1; i++) {
-                this.pushButton(counter);
-            }
-            finalModule.reset();
-            console.log(ends.map(e => e.state()));
-            this.pushButton(counter);
-
-            if (finalModule.list.length === 1 && finalModule.list[0] === Signal.L) {
-                break;
-            }
-            console.log(ends.map(e => e.state()));
-
-            console.log();
-            // endStates.push(ends.map(e => e.state() === Signal.L ? 0 : 1))
-
-
-            // console.log(`res: ${res} : ${finalModule.list.length} && ${ends.map(e => (this.modules.get(e) as FlipFlop).state).join(", ")}`)
-            this.resetAll();
+        while (this.endsFirstHigh.some(e => e === 0)) {
+            this.pushButton();
         }
+        console.log(this.endsFirstHigh)
 
-        return res;
+
+        return this.endsFirstHigh.reduce((a, b) => lcm(a,b));
     }
 
 }
